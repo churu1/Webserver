@@ -12,7 +12,7 @@ ConnectionPool* ConnectionPool::GetInstance() {
 }
 
 // 构造初始化
-void ConnectionPool::init(string url, string user, string password, 
+void ConnectionPool::Init(string url, string user, string password, 
                           string database_name,int port, int max_connection, 
                           int close_log) {
   url_ = url;
@@ -28,7 +28,8 @@ void ConnectionPool::init(string url, string user, string password,
     connection = mysql_init(connection);
 
     if (connection == NULL) {
-      // TODO 使用日志类相关函数将错误信息到日志文件中
+      //LOG_ERROR("MYSQL Error");
+      std::cout << "MYSQL Error" << std::endl;
     }
 
     // 连接到 mysql 服务器
@@ -37,12 +38,16 @@ void ConnectionPool::init(string url, string user, string password,
                                     port, NULL, 0);
 
     if(connection == NULL) {
-      // TODO 使用日志类函数将错误信息输出到日志文件中
+      LOG_ERROR("MYSQL Error");
+      exit(1);
     }
 
     connection_list_.push_back(connection);
     ++free_connection_;
   }
+
+  reserve_ = Sem(free_connection_);
+  max_connection_ = free_connection_;
 
 }
 
@@ -87,7 +92,7 @@ bool ConnectionPool::ReleaseConnection(MYSQL* connection) {
 void ConnectionPool::DestroyPool() {
   lock_.Lock();
   if(connection_list_.size() > 0) {
-    list<MYSQL*>::iterator it;
+    //list<MYSQL*>::iterator it;
     for(auto it : connection_list_) {
       mysql_close(it);
     }

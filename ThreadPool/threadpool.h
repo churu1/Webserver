@@ -8,8 +8,8 @@
 #include "../Lock/locker.h"
 #include "../CGImysql/sql_connection_pool.h"
 
-template<typename T>
-class ThreadPool{
+template <typename T>
+class ThreadPool {
  public:
   // 初始化线程池，thread_number 是线程池中线程的数量， max_requests 是请求队列最
   // 多允许的、等待处理的请求的数量
@@ -21,20 +21,20 @@ class ThreadPool{
   /// @param request 任务对象 
   /// @param state 是读还是写 ？
   /// @return 成功添加返回 true
-  bool append(T* request, int state);
+  bool Append(T* request, int state);
 
   /// @brief 往工作队列中添加任务
   /// @param request 任务对象
   /// @return 成功添加返回 true
-  bool append_p(T* request);
+  bool Append_p(T* request);
 
  private:
   /// @brief 工作线程运行的函数，他不断从工作队列中取出任务并执行
   /// @param arg 线程的参数 
   /// @return 返回线程池对象
-  static void* worker(void* arg);
+  static void* Worker(void* arg);
     
-  void run();
+  void Run();
 
  private:
   int actor_model_;       // 模式切换
@@ -48,7 +48,7 @@ class ThreadPool{
 };
 
 
-template<typename T>
+template <typename T>
 ThreadPool<T>::ThreadPool(int actor_model, ConnectionPool* connection_pool,
                           int thread_number, int max_requests)
     : actor_model_(actor_model),
@@ -59,11 +59,16 @@ ThreadPool<T>::ThreadPool(int actor_model, ConnectionPool* connection_pool,
   // 检查参数合法性
   if (thread_number <= 0 || max_requests <= 0) 
     throw std::exception();
+  
+
   // 创建长度为 therad_number_ 的线程数组
   threads_ = new pthread_t[thread_number_];
+  if (!threads_)
+    throw std::exception();
+
   // 创建 thread_number 个线程
   for (int i = 0; i < thread_number; ++i) {
-    if (ptherad_create(threads_ + i, NULL, worker, this) != 0) {
+    if (pthread_create(threads_ + i, NULL, Worker, this) != 0) {
       delete[] threads_;
       throw std::exception();
     }
@@ -81,7 +86,7 @@ ThreadPool<T>::~ThreadPool() {
 }
 
 template <typename T>
-bool ThreadPool<T>::append_p(T* requst) { 
+bool ThreadPool<T>::Append_p(T* request) { 
   // 上锁
   queue_locker_.Lock();
   // 判断请求的数量是否到达了上限
@@ -99,7 +104,7 @@ bool ThreadPool<T>::append_p(T* requst) {
 }
 
 template <typename T>
-bool ThreadPool<T>::append(T* request, int state) {
+bool ThreadPool<T>::Append(T* request, int state) {
   // 上锁
   queue_locker_.Lock();
   // 判断请求的数量是否到达了上限
@@ -119,18 +124,18 @@ bool ThreadPool<T>::append(T* request, int state) {
 }
 
 template <typename T>
-void* ThreadPool<T>::worker(void* arg) {
+void* ThreadPool<T>::Worker(void* arg) {
   ThreadPool* pool = (ThreadPool*)arg;
-  pool->run();
+  pool->Run();
   return pool;
 }
 
 template <typename T>
-void ThreadPool<T>::run() {
+void ThreadPool<T>::Run() {
   while (true) {
     // 信号量减 1
     queue_stat_.Wait();
-    queue_locker_.Lock()
+    queue_locker_.Lock();
     if (work_queue_.empty()) {
       queue_locker_.Unlock();
       continue;
@@ -145,25 +150,25 @@ void ThreadPool<T>::run() {
     // 还有很多问题没弄懂
     if (1 == actor_model_) { // ET模式
       if (0 == request->state_) { // 需要读数据
-        if (request->read_once()) {
-          request->improv = 1;
-          ConnectionRAII mysql_con(&request->mysql, conn_pool_);
-          reqeust->process();
+        if (request->ReadOnce()) {
+          request->improv_ = 1;
+          ConnectionRAII mysql_con(&request->mysql_, conn_pool_);
+          request->Process();
         } else {
-         request->improv = 1;
-         request->timer_flag = 1; 
+         request->improv_ = 1;
+         request->timer_flag_ = 1; 
         }
       } else {
-        if (request->write()) {
-          request->improv = 1;
+        if (request->Write()) {
+          request->improv_ = 1;
         } else {
-          request->improv = 1;
-          request->timer_flag = 1;
+          request->improv_ = 1;
+          request->timer_flag_ = 1;
         }
       }
     } else { // LT 模式
-      ConnectionRAII mysql_con(&request->mysql, conn_pool_);
-      request->process();
+      ConnectionRAII mysql_con(&request->mysql_, conn_pool_);
+      request->Process();
     }
   }
 }

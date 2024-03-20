@@ -6,7 +6,7 @@
 class Config {
  public:
   Config();
-  ~Config();
+  ~Config(){};
 
   /// @brief 对终端输入的命令参数做出解析,以选择不同的配置
   /// @param argc 参数个数

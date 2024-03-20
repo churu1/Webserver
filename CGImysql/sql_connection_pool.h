@@ -45,7 +45,7 @@ class ConnectionPool{
   /// @param port 数据库端口
   /// @param max_connection 最大连接数量 
   /// @param close_log // 日志开关
-  void init(string url, string user, string password, string datebase_name,
+  void Init(string url, string user, string password, string datebase_name,
             int port, int max_connection, int close_log);
 
  private:
@@ -60,7 +60,7 @@ class ConnectionPool{
   Locker lock_;
   list<MYSQL*> connection_list_;
   Sem reserve_;
-
+  
 
  public:
   string url_;

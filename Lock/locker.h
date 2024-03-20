@@ -58,7 +58,7 @@ class Locker {
     return pthread_mutex_unlock(&mutex_) == 0;   
   }
 
-  pthread_mutex_t *get() { // 获取互斥锁
+  pthread_mutex_t *Get() { // 获取互斥锁
     return &mutex_; 
   }
 
